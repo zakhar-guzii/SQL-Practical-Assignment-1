@@ -1,6 +1,6 @@
 use ecommerce_db;
 
--- select joining 5 tables
+-- 1. select joining 5 tables
 
 select
     c.first_name,
@@ -20,6 +20,16 @@ join products p on oi.product_id = p.product_id
 join suppliers s on p.supplier_id = s.supplier_id
 order by o.order_date desc;
 
--- union
+-- addition: union
 
+-- Таблиця замовлень, потребуючих додаткової уваги
+select order_id, customer_id, order_date, status
+from orders
+where status  = 'Pending'
+union
+select order_id, customer_id, order_date, status
+from orders
+where status = 'Canceled';
+
+-- CTE
 
