@@ -1,5 +1,4 @@
 import random
-import uuid
 import mysql.connector
 from faker import Faker
 
@@ -41,10 +40,10 @@ def generate_order(customer_id):
     customer_id = random.choice(customer_id)
     order_date = fake.date_this_decade().strftime("%Y-%m-%d")
     status = random.choice(order_statuses)
-    payment_methods = random.choice(payment_methods)
+    payment_method = random.choice(payment_methods)
     shipping_address = fake.address().replace('\n', ', ')
     total_amount = round(random.randint(5, 10000),2)
-    return customer_id, order_date, status, payment_methods, shipping_address, total_amount
+    return customer_id, order_date, status, payment_method, shipping_address, total_amount
 
 def insert_orders(m, customer_id):
     sql = """
@@ -57,14 +56,17 @@ def insert_orders(m, customer_id):
         cursor.execute(sql, order)
     conn.commit()
 
-insert_orders(50000, uuid.uuid4())
+cursor.execute("SELECT customer_id FROM customers")
+customer_ids = [row[0] for row in cursor.fetchall()]
+
+insert_orders(50000, customer_ids)
 
 def generate_supplier():
-    name = fake.company()
-    contact_name = fake.name()
-    email = fake.unique.company_email()
+    name = fake.company()[:100]
+    contact_name = fake.name()[:100]
+    email = fake.unique.company_email()[:100]
     phone = fake.phone_number()[:20]
-    country = fake.country()
+    country = fake.country()[:50]
     rating = round(random.uniform(0, 5), 2)
     return name, contact_name, email, phone, country, rating
 
@@ -86,27 +88,31 @@ categories = [
     "Sports", "Toys", "Beauty", "Automotive", "Furniture"
 ]
 
-def generate_product():
+def generate_product(supplier_ids):
     name = " ".join(fake.words(2)).title()
     description = fake.text(max_nb_chars=200)
     price = round(random.uniform(1, 100000), 2)
     category = random.choice(categories)
     stock_quantity = random.randint(0, 1000)
-    discount = round(random.uniform(0, 66), 2)
-    return name, description, price, category, stock_quantity, discount
+    supplier_id = random.choice(supplier_ids)
+    created_at = fake.date_this_decade().strftime("%Y-%m-%d")
+    return name, description, price, category, stock_quantity, supplier_id, created_at
 
-def insert_products(k):
+def insert_products(k, supplier_ids):
     sql = """
           INSERT INTO products
-              (name, description, price, category, stock_quantity, discount)
-          Values (%s, %s, %s, %s, %s, %s) \
+          (name, description, price, category, stock_quantity, supplier_id, created_at)
+          VALUES (%s, %s, %s, %s, %s, %s, %s) \
           """
     for _ in range(k):
-        product = generate_product()
+        product = generate_product(supplier_ids)
         cursor.execute(sql, product)
     conn.commit()
 
-insert_products(2000)
+cursor.execute("SELECT supplier_id FROM suppliers")
+supplier_ids = [row[0] for row in cursor.fetchall()]
+
+insert_products(2000, supplier_ids)
 
 def generate_order_item(order_ids, product_ids, product_prices):
     order_id = random.choice(order_ids)
@@ -128,5 +134,12 @@ def insert_order_items(n, order_ids, product_ids, product_prices):
     conn.commit()
 
 
-n = random.randint(50000, 20000)
+n = random.randint(50000, 200000)
+cursor.execute("SELECT order_id FROM orders")
+order_ids = [row[0] for row in cursor.fetchall()]
+
+cursor.execute("SELECT product_id, price FROM products")
+products = cursor.fetchall()
+product_ids = [p[0] for p in products]
+product_prices = {p[0]: p[1] for p in products}
 insert_order_items(n, order_ids, product_ids, product_prices)
