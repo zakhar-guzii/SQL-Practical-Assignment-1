@@ -10,7 +10,7 @@ conn = mysql.connector.connect(
     passwd="MySQL_Student123",
     database="ecommerce_db"
 )
-cursor = conn.cursor(buffered=True) #обʼєкт, що буде відправляти SQL-запити до бази даних
+cursor = conn.cursor(buffered=True)
 
 def generate_customer():
     first_name = fake.first_name()
