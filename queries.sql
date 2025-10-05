@@ -81,66 +81,65 @@ order by c.city;
 
 -- king of queries
 
--- знайти топ клієнтів з найбільшими витрататами за останні 6 місяців,
--- разом з інформацією про те, що вони замовили за цей час,
--- найбільш популярний постачальників та категорії товарів
+WITH top_customers AS (
+    -- CTE
+    SELECT customer_id,
+           COUNT(*) as order_count
+    FROM orders
+    GROUP BY customer_id
+    HAVING COUNT(*) > 1)
+SELECT *
+FROM (SELECT c.customer_id,
+             c.first_name,
+             c.last_name,
+             c.city,
+             COUNT(DISTINCT o.order_id)       as total_orders,
+             SUM(oi.quantity * oi.unit_price) as total_spent,
+             p.category,
+             s.name                           as supplier_name
+      FROM customers c
+               INNER JOIN orders o ON c.customer_id = o.customer_id
+               INNER JOIN order_items oi ON o.order_id = oi.order_id
+               INNER JOIN products p ON oi.product_id = p.product_id
+               INNER JOIN suppliers s ON p.supplier_id = s.supplier_id
+      WHERE o.order_date >= '2024-01-01'
+        -- Subquery в WHERE
+        AND c.customer_id IN (SELECT customer_id
+                              FROM top_customers)
+        AND o.total_amount > (SELECT AVG(total_amount)
+                              FROM orders)
+      GROUP BY c.customer_id,
+               c.first_name,
+               c.last_name,
+               c.city,
+               p.category,
+               s.name
+      HAVING SUM(oi.quantity * oi.unit_price) > 100
 
-with recent_orders as (select o.order_id, -- всі замовлення, окрім скасованих
-                              o.customer_id,
-                              o.total_amount,
-                              o.order_date,
-                              o.status
-                       from orders o
-                       where o.order_date >= curdate() - interval 6 month
-                         and o.status != 'Canceled'),
-     customer_spending as (select r.customer_id, -- загальна сума витрат
-                                  sum(r.total_amount) as total_spent,
-                                  count(r.order_id)   as total_orders
-                           from recent_orders r
-                           group by r.customer_id)
-    (select c.customer_id,
-            concat(c.first_name, '', c.last_name) as full_name,
-            c.email,
-            cs.total_spent,
-            cs.total_orders,
-            o.order_id,
-            o.order_date,
-            p.name                                as product_name,
-            p.category,
-            s.name                                as supplier_name,
-            (select s2.name
-             from order_items oi2
-                      join products p2 on oi2.product_id = p2.product_id
-                      join suppliers s2 on p2.supplier_id = s2.supplier_id
-                      join orders o2 on oi2.order_id = o2.order_id
-             where o2.customer_id = c.customer_id
-             group by s2.supplier_id
-             order by count(*) desc
-             limit 1)                             as top_supplier
-     from customers c
-              join customer_spending cs on c.customer_id = cs.customer_id
-              join orders o on c.customer_id = o.customer_id
-              join order_items oi on o.order_id = oi.order_id
-              join products p on oi.product_id = p.product_id
-              join suppliers s on p.supplier_id = s.supplier_id
-     where cs.total_spent > 1000
-     group by c.customer_id
-     having count(distinct o.order_id) >= 2)
-union all
-(select c.customer_id,
-        concat(c.first_name, ' ', c.last_name) as full_name,
-        c.email,
-        cs.total_spent,
-        cs.total_orders,
+      UNION ALL
 
-        null                                   as order_id,
-        null                                   as order_date,
-        null                                   as product_name,
-        null                                   as category,
-        null                                   as supplier_name,
-        null                                   as top_supplier
- from customers c
-          join customer_spending cs on c.customer_id = cs.customer_id
- where cs.total_orders = 1)
-order by total_spent desc
-limit 15;
+      SELECT c.customer_id,
+             c.first_name,
+             c.last_name,
+             c.city,
+             COUNT(DISTINCT o.order_id)       as total_orders,
+             SUM(oi.quantity * oi.unit_price) as total_spent,
+             p.category,
+             s.name                           as supplier_name
+      FROM customers c
+               INNER JOIN orders o ON c.customer_id = o.customer_id
+               INNER JOIN order_items oi ON o.order_id = oi.order_id
+               INNER JOIN products p ON oi.product_id = p.product_id
+               INNER JOIN suppliers s ON p.supplier_id = s.supplier_id
+      WHERE o.status = 'Delivered'
+        AND p.price > (SELECT AVG(price)
+                       FROM products)
+      GROUP BY c.customer_id,
+               c.first_name,
+               c.last_name,
+               c.city,
+               p.category,
+               s.name
+      HAVING COUNT(DISTINCT o.order_id) >= 1) AS combined_results
+ORDER BY total_spent DESC
+LIMIT 20;
