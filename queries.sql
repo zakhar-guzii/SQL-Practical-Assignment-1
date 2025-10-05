@@ -1,6 +1,6 @@
 use ecommerce_db;
 
--- 1. select joining 5 tables
+-- Перші запити невдалі спроби щось зробити
 
 -- Отримати повну інформацію про все
 select c.first_name,
@@ -20,8 +20,6 @@ from customers c
          join suppliers s on p.supplier_id = s.supplier_id
 order by o.order_date desc;
 
--- addition: union
-
 -- Таблиця замовлень, потребуючих додаткової уваги
 select order_id, customer_id, order_date, status
 from orders
@@ -30,8 +28,6 @@ union
 select order_id, customer_id, order_date, status
 from orders
 where status = 'Canceled';
-
--- CTEs, order by, where
 
 -- Знайти покупців, що входить в топ 30% за витраченими коштами
 with cust_totals as (select customer_id,
@@ -59,7 +55,6 @@ order by bb.total_spend desc;
 
 -- subquery, group by & having
 
--- Найкращий постачальник міста
 select c.city,
        s.name           as supplier_name,
        sum(oi.quantity) as total_items
