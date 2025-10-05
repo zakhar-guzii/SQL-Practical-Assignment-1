@@ -82,7 +82,6 @@ order by c.city;
 -- king of queries
 
 WITH top_customers AS (
-    -- CTE
     SELECT customer_id,
            COUNT(*) as order_count
     FROM orders
@@ -103,7 +102,6 @@ FROM (SELECT c.customer_id,
                INNER JOIN products p ON oi.product_id = p.product_id
                INNER JOIN suppliers s ON p.supplier_id = s.supplier_id
       WHERE o.order_date >= '2024-01-01'
-        -- Subquery в WHERE
         AND c.customer_id IN (SELECT customer_id
                               FROM top_customers)
         AND o.total_amount > (SELECT AVG(total_amount)
